@@ -11,6 +11,8 @@ const userRoutes = require('./routes/users');
 const aiRoutes = require('./routes/ai');
 const { runAutoEvaluation } = require('./jobs/autoEvaluateJob');
 
+console.log('[SYSTEM] Registering API Routes...');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -44,6 +46,8 @@ app.use('/api/predictions', predictionRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/ai', aiRoutes);
+
+console.log('[SYSTEM] API Routes Registered Successfully');
 
 
 // 404 handler
