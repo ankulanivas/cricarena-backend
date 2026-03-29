@@ -8,6 +8,7 @@ const challengeRoutes = require('./routes/challenges');
 const predictionRoutes = require('./routes/predictions');
 const leaderboardRoutes = require('./routes/leaderboard');
 const userRoutes = require('./routes/users');
+const aiRoutes = require('./routes/ai');
 const { runAutoEvaluation } = require('./jobs/autoEvaluateJob');
 
 const app = express();
@@ -15,7 +16,11 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000',
+    'https://cricarena.web.app',
+    'https://cricarena.firebaseapp.com'
+  ],
   credentials: true,
 }));
 app.use(express.json());
@@ -32,6 +37,8 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/ai', aiRoutes);
+
 
 // 404 handler
 app.use((req, res) => {
