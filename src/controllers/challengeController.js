@@ -225,4 +225,55 @@ const getUserChallenges = async (req, res) => {
   }
 };
 
-module.exports = { createChallenge, getChallengeById, joinChallenge, enterResults, getUserChallenges, checkAutomatedResults };
+// POST /api/challenges/:id/create-from-template
+const createChallengeFromTemplate = async (req, res) => {
+  const template_id = req.params.id;
+  const user_id = req.user.uid;
+
+  try {
+    const doc = await db.collection('challenges').doc(template_id).get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Template challenge not found' });
+    }
+
+    const templateData = doc.data();
+    const new_challenge_id = uuidv4();
+    
+    const newChallenge = {
+      ...templateData,
+      challenge_id: new_challenge_id,
+      creator_id: user_id,
+      participants: [user_id],
+      status: 'open',
+      results_entered: false,
+      correct_answers: {},
+      created_at: new Date().toISOString(),
+      is_instance: true,
+      template_id: template_id
+    };
+
+    await db.collection('challenges').doc(new_challenge_id).set(newChallenge);
+
+    // Update creator stats
+    const userRef = db.collection('users').doc(user_id);
+    await userRef.update({
+      challenges_joined: admin.firestore.FieldValue.increment(1),
+      challenges_played: admin.firestore.FieldValue.increment(1),
+    });
+
+    return res.status(201).json({ challengeId: new_challenge_id });
+  } catch (error) {
+    console.error('Error creating challenge from template:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = { 
+  createChallenge, 
+  getChallengeById, 
+  joinChallenge, 
+  enterResults, 
+  getUserChallenges, 
+  checkAutomatedResults,
+  createChallengeFromTemplate 
+};
