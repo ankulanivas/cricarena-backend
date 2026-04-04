@@ -39,7 +39,7 @@ const runAutoEvaluation = async () => {
                 const questions = challenge.questions || [];
 
                 questions.forEach(q => {
-                    const label = q.label?.toLowerCase() || q.text?.toLowerCase() || '';
+                    const label = q.label?.toLowerCase() || '';
                     if (label.includes('match winner')) correct_answers[q.id] = matchResult.winnerTeamId;
                     else if (label.includes('toss winner')) correct_answers[q.id] = matchResult.tossWinnerTeamId;
                     else if (label.includes('player of the match')) correct_answers[q.id] = matchResult.manOfMatch;

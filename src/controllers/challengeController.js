@@ -140,6 +140,11 @@ const enterResults = async (req, res) => {
   const user_id = req.user.uid;
   const challenge_id = req.params.id;
 
+  console.log("🔥 ENTER RESULTS API HIT");
+  console.log("RESULTS RECEIVED:", correct_answers);
+  console.log("USER:", user_id);
+  console.log("CHALLENGE:", challenge_id);
+
   try {
     const challengeRef = db.collection('challenges').doc(challenge_id);
     const doc = await challengeRef.get();
@@ -156,8 +161,34 @@ const enterResults = async (req, res) => {
       return res.status(400).json({ error: 'Results have already been entered' });
     }
 
-    // await evaluatePredictions(challenge_id, correct_answers);
-    return res.status(200).json({ success: true, message: 'Result entry received, but evaluation is currently disabled' });
+    if (!correct_answers || Object.keys(correct_answers).length === 0) {
+      throw new Error("❌ No correct answers provided");
+    }
+
+    const normalizedAnswers = {};
+    if (challenge.questions) {
+      challenge.questions.forEach(q => {
+        if (correct_answers[q.id] !== undefined) {
+          normalizedAnswers[q.id] = correct_answers[q.id];
+        }
+      });
+    }
+
+    console.log("🚀 STARTING EVALUATION");
+    await evaluatePredictions(challenge_id, normalizedAnswers);
+    console.log("✅ EVALUATION COMPLETED");
+
+    await challengeRef.update({
+      results_entered: true,
+      correct_answers: normalizedAnswers,
+      status: 'completed'
+    });
+    console.log("✅ CHALLENGE UPDATED SUCCESSFULLY");
+
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Results entered and evaluated successfully' 
+    });
   } catch (error) {
     console.error('Error entering results:', error);
     return res.status(500).json({ error: error.message || 'Internal server error' });
@@ -190,7 +221,7 @@ const checkAutomatedResults = async (req, res) => {
         const questions = challenge.questions || [];
 
         questions.forEach(q => {
-            const label = q.label?.toLowerCase() || q.text?.toLowerCase() || '';
+            const label = q.label?.toLowerCase() || '';
             if (label.includes('match winner')) correct_answers[q.id] = matchResult.winnerTeamId;
             else if (label.includes('toss winner')) correct_answers[q.id] = matchResult.tossWinnerTeamId;
             else if (label.includes('player of the match')) correct_answers[q.id] = matchResult.manOfMatch || matchResult.manofmatch;
@@ -242,8 +273,10 @@ const createChallengeFromTemplate = async (req, res) => {
     const newChallenge = {
       ...templateData,
       challenge_id: new_challenge_id,
-      creator_id: user_id,
-      participants: [user_id],
+      creator_id: templateData.creator_id, // KEEP ORIGINAL CREATOR
+      participants: templateData.participants
+        ? [...templateData.participants, user_id]
+        : [templateData.creator_id, user_id],
       status: 'open',
       results_entered: false,
       correct_answers: {},

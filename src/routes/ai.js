@@ -34,11 +34,13 @@ router.post('/generate', authMiddleware, async (req, res) => {
       1. ALL questions MUST be MCQ.
       2. Set "type" to "options" for every question.
       3. REQUIRED QUESTIONS to include:
-         - Match Winner (exactly ["${teamA}", "${teamB}"])
-         - Toss Winner (exactly ["${teamA}", "${teamB}"])
+         - Match Winner (exactly use abbreviations: ["${teamA}", "${teamB}"])
+         - Toss Winner (exactly use abbreviations: ["${teamA}", "${teamB}"])
          - Top Run Scorer (4-6 player names as options)
          - Leading Wicket Taker (4-6 player names as options)
          - Total Sixes (ranges as options, e.g., ["0-5", "6-10", "11-15", "16+"])
+      
+      CRITICAL: Always use team abbreviations (${teamA}, ${teamB}) in question text and options instead of full names.
       
       Format as JSON array:
       [

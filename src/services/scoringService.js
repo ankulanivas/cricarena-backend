@@ -1,17 +1,55 @@
 const { db, admin } = require('../../config/firebase');
 
+const TEAM_MAP = {
+  "sunrisers hyderabad": "srh",
+  "royal challengers bangalore": "rcb",
+  "mumbai indians": "mi",
+  "chennai super kings": "csk",
+  "kolkata knight riders": "kkr",
+  "delhi capitals": "dc",
+  "punjab kings": "pbks",
+  "rajasthan royals": "rr",
+  "lucknow super giants": "lsg",
+  "gujarat titans": "gt"
+};
+
+const normalize = (val) => {
+  if (!val) return '';
+  let clean = String(val).toLowerCase().trim();
+  
+  // Convert full team name -> short code
+  if (TEAM_MAP[clean]) {
+    return TEAM_MAP[clean];
+  }
+
+  // fallback (remove spaces)
+  return clean.replace(/\s+/g, '');
+};
+
 /**
  * Calculate scores and update leaderboard for a challenge
  */
 const evaluatePredictions = async (challenge_id, correct_answers) => {
-    // Feature disabled: Automatic result evaluation and leaderboard generation
-    console.log(`[Scoring] Skipping evaluation for challenge ${challenge_id} (FEATURE DISABLED)`);
-    return { success: true, message: "Evaluation disabled" };
-
     try {
+        const challengeRef = db.collection('challenges').doc(challenge_id);
+        const challengeDoc = await challengeRef.get();
+        if (!challengeDoc.exists) {
+            throw new Error(`Challenge ${challenge_id} not found`);
+        }
+
+        const challengeData = challengeDoc.data();
+        const participants = challengeData.participants || [];
+        const questions = challengeData.questions || [];
+
+        if (participants.length === 0) {
+            console.log("👥 Participants: 0");
+            return { success: true, message: "No participants to evaluate" };
+        }
+        console.log("👥 Participants:", participants.length);
 
         const predictionRefs = participants.map(uid => db.collection('predictions').doc(`${challenge_id}_${uid}`));
         const predictionDocs = await db.getAll(...predictionRefs);
+        console.log("📄 Predictions fetched:", predictionDocs.length);
 
         const batch = db.batch();
         const userScoreUpdates = [];
@@ -22,19 +60,33 @@ const evaluatePredictions = async (challenge_id, correct_answers) => {
             const pred = predDoc.data();
             let score = 0;
 
-            // Scoring logic based on user's requirements
-            // Match Winner: +10, Toss Winner: +5, Player of Match: +10
-            // For other questions, we can keep the default +1 score per correct answer
+            // Scoring logic
             for (const q of questions) {
-                const userAnswer = pred.answers?.[q.id];
-                const correctAnswer = correct_answers[q.id];
+                const labelKey = q.label?.toLowerCase().replace(/\s+/g, '_');
+                const userAnswer = pred.answers?.[q.id] ?? pred.answers?.[labelKey];
+                const correctAnswer = correct_answers[q.id] ?? correct_answers[labelKey];
 
-                if (userAnswer !== undefined && correctAnswer !== undefined &&
-                    String(userAnswer).toLowerCase().trim() === String(correctAnswer).toLowerCase().trim()) {
+                const normUser = normalize(userAnswer);
+                const normCorrect = normalize(correctAnswer);
+
+                console.log("SCORING DEBUG:", {
+                    question: q.label,
+                    q_id: q.id,
+                    labelKey,
+                    userAnswer,
+                    correctAnswer,
+                    normUser,
+                    normCorrect,
+                    isMatch: normUser === normCorrect
+                });
+
+                if (userAnswer !== undefined && correctAnswer !== undefined && normUser === normCorrect) {
                     
-                    if (q.id === 'match_winner' || q.text?.toLowerCase().includes('match winner')) score += 10;
-                    else if (q.id === 'toss_winner' || q.text?.toLowerCase().includes('toss winner')) score += 5;
-                    else if (q.id === 'player_of_match' || q.text?.toLowerCase().includes('player of the match')) score += 10;
+                    // Priority scoring
+                    const label = (q.label || '').toLowerCase();
+                    if (label.includes('match winner')) score += 10;
+                    else if (label.includes('toss winner')) score += 5;
+                    else if (label.includes('player of the match') || label.includes('man of the match')) score += 10;
                     else score += 1;
                 }
             }
@@ -43,30 +95,18 @@ const evaluatePredictions = async (challenge_id, correct_answers) => {
             userScoreUpdates.push({ user_id: pred.user_id, score, total: questions.length });
         }
 
+        console.log("💾 Committing scores...");
         await batch.commit();
+        console.log("✅ Scores committed successfully");
 
-        // Calculate Ranks & Leaderboard
-        const leaderboard = userScoreUpdates
-            .sort((a, b) => b.score - a.score)
-            .map((p, idx, self) => {
-                const rank = self.findIndex(s => s.score === p.score) + 1;
-                return { ...p, rank };
-            });
-
-        // Update Challenge
-        await challengeRef.update({
-            correct_answers,
-            results_entered: true,
-            status: 'completed',
-            leaderboard: leaderboard
-        });
-
-        // Update User Stats
-        for (const entry of leaderboard) {
-            await updateUserStats(entry.user_id, entry.score, entry.total, entry.rank);
+        // Optional: Update user stats for winners and participants
+        const sortedScores = [...userScoreUpdates].sort((a, b) => b.score - a.score);
+        for (const entry of sortedScores) {
+            const rank = sortedScores.findIndex(s => s.score === entry.score) + 1;
+            await updateUserStats(entry.user_id, entry.score, entry.total, rank);
         }
 
-        return { success: true, leaderboard };
+        return { success: true };
     } catch (error) {
         console.error('[Scoring] Evaluation failed:', error);
         throw error;
@@ -77,6 +117,7 @@ const evaluatePredictions = async (challenge_id, correct_answers) => {
  * Helper to update user stats
  */
 const updateUserStats = async (uid, score, total, rank) => {
+    console.log(`📊 Updating stats for user: ${uid}`);
     try {
         const userRef = db.collection('users').doc(uid);
         const userDoc = await userRef.get();
