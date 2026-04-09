@@ -64,8 +64,14 @@ const updateUsername = async (req, res) => {
   const { username } = req.body;
   const user_id = req.user.uid;
 
-  if (!username || username.length < 3) {
-    return res.status(400).json({ error: 'Username must be at least 3 characters' });
+  if (!username || username.length < 3 || username.length > 15) {
+    return res.status(400).json({ error: 'Username must be between 3 and 15 characters' });
+  }
+
+  // Strict alphanumeric + underscore only
+  const usernameRegex = /^[a-zA-Z0-9_]+$/;
+  if (!usernameRegex.test(username)) {
+    return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
   }
 
   const cleanUsername = username.toLowerCase().trim();
@@ -87,44 +93,6 @@ const updateUsername = async (req, res) => {
     return res.status(200).json({ success: true, username: cleanUsername });
   } catch (error) {
     console.error('Error updating username:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// GET /api/users/profile/:username
-const getUserByUsername = async (req, res) => {
-  try {
-    const snapshot = await db.collection('users')
-      .where('username', '==', req.params.username.toLowerCase())
-      .limit(1)
-      .get();
-
-    if (snapshot.empty) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const userDoc = snapshot.docs[0];
-    const user = userDoc.data();
-
-    return res.status(200).json({
-      user: {
-        username: user.username,
-        name: user.username ? `@${user.username}` : (user.name || 'Anonymous'),
-        profile_picture: user.profile_picture || '',
-        profileImage: user.profileImage || null,
-        challenges_played: user.challenges_played || 0,
-        challenges_joined: user.challenges_joined || user.challenges_played || 0,
-        wins: user.wins || 0,
-        top_3_finishes: user.top_3_finishes || 0,
-        best_winning_streak: user.best_winning_streak || 0,
-        accuracy: user.accuracy || 0,
-        total_predictions: user.total_predictions || 0,
-        achievements: user.achievements || [],
-        best_score: user.best_score || '0/0',
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching user by username:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -223,5 +191,4 @@ const updateProfileImage = async (req, res) => {
   }
 };
 
-module.exports = { getUserProfile, checkUsername, updateUsername, getUserByUsername, updateProfile, hideChallenge, updateProfileImage };
-
+module.exports = { getUserProfile, checkUsername, updateUsername, updateProfile, hideChallenge, updateProfileImage };
