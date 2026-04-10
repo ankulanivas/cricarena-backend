@@ -63,8 +63,8 @@ const evaluatePredictions = async (challenge_id, correct_answers) => {
             // Scoring logic
             for (const q of questions) {
                 const labelKey = q.label?.toLowerCase().replace(/\s+/g, '_');
-                const userAnswer = pred.answers?.[q.id] ?? pred.answers?.[labelKey];
-                const correctAnswer = correct_answers[q.id] ?? correct_answers[labelKey];
+                const userAnswer = pred.answers?.[q.id];
+                const correctAnswer = correct_answers[q.id];
 
                 const normUser = normalize(userAnswer);
                 const normCorrect = normalize(correctAnswer);
@@ -80,14 +80,12 @@ const evaluatePredictions = async (challenge_id, correct_answers) => {
                     isMatch: normUser === normCorrect
                 });
 
-                if (userAnswer !== undefined && correctAnswer !== undefined && normUser === normCorrect) {
-                    
-                    // Priority scoring
-                    const label = (q.label || '').toLowerCase();
-                    if (label.includes('match winner')) score += 10;
-                    else if (label.includes('toss winner')) score += 5;
-                    else if (label.includes('player of the match') || label.includes('man of the match')) score += 10;
-                    else score += 1;
+                if (
+                  userAnswer !== undefined &&
+                  correctAnswer !== undefined &&
+                  normUser === normCorrect
+                ) {
+                  score += 1;
                 }
             }
 
