@@ -16,6 +16,8 @@ const DEFAULT_MCQ_QUESTIONS = (teamA, teamB) => [
   { id: 'q8', text: 'TOTAL RUNS SCORED BY BOTH TEAMS?', type: 'options', options: ['0-300', '301-350', '351-400', '401+'] },
   { id: 'q9', text: 'TOTAL WICKETS FALLEN?', type: 'options', options: ['0-5', '6-10', '11-15', '16+'] },
   { id: 'q10', text: 'TOTAL FOURS IN THE MATCH?', type: 'options', options: ['0-10', '11-20', '21-30', '31+'] },
+  { id: 'q11', text: 'WHICH OPENING PAIR WILL FIRE MORE TODAY', type: 'options', options: [teamA || 'TEAM A', teamB || 'TEAM B'] },
+
 ];
 
 router.post('/generate', authMiddleware, async (req, res) => {
@@ -70,7 +72,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
 
     try {
       let rawQuestions = JSON.parse(questionsText);
-      
+
       // Normalize to MCQ
       let questions = rawQuestions.map((q) => ({
         text: q.text || '',
@@ -80,7 +82,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
 
       // Ensure Required Questions
       const hasQ = (terms) => questions.some((q) => terms.some(term => q.text.toLowerCase().includes(term)));
-      
+
       if (!hasQ(['win', 'winner']) && !hasQ(['match'])) {
         questions.push({ text: "WHO WILL WIN THE MATCH?", type: "options", options: [teamA, teamB] });
       }
@@ -126,10 +128,10 @@ router.post('/generate', authMiddleware, async (req, res) => {
 
   } catch (error) {
     console.error('[AI] Generation Error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      questions: DEFAULT_MCQ_QUESTIONS(teamA, teamB), 
-      error: error.message || 'INTERNAL_ERROR' 
+    return res.status(500).json({
+      success: false,
+      questions: DEFAULT_MCQ_QUESTIONS(teamA, teamB),
+      error: error.message || 'INTERNAL_ERROR'
     });
   }
 });
