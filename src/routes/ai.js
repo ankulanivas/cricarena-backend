@@ -17,7 +17,16 @@ const DEFAULT_MCQ_QUESTIONS = (teamA, teamB) => [
   { id: 'q9', text: 'TOTAL WICKETS FALLEN?', type: 'options', options: ['0-5', '6-10', '11-15', '16+'] },
   { id: 'q10', text: 'TOTAL FOURS IN THE MATCH?', type: 'options', options: ['0-10', '11-20', '21-30', '31+'] },
   { id: 'q11', text: 'WHICH OPENING PAIR WILL FIRE MORE TODAY', type: 'options', options: [teamA || 'TEAM A', teamB || 'TEAM B'] },
-
+  { id: 'q12', text: 'WHO WILL DOMINATE?', type: 'options', options: ['BATTERS', 'BOWLERS'] },
+  { id: 'q13', text: 'THIS MATCH  GOING TO BE', type: 'options', options: ['ONE SIDED', 'TOUGH FIGHT', 'TILL THE LAST BALL '] },
+  { id: 'q15', text: 'IS THERE CHANCE OF GETTING 100', type: 'options', options: ['YES', 'NO'] },
+  { id: 'q16', text: 'HOW MANY 50,S TODAY', type: 'options', options: ['0-2', '2-4', '4+'] },
+  { id: 'q17', text: 'TOSS WINNER CHOOSE TO', type: 'options', options: ['BAT', 'BOWL'] },
+  { id: 'q18', text: 'HOW MANY DUCKS TODAY?', type: 'options', options: ['0-2', '2-4', '4+'] },
+  { id: 'q19', text: '100 PATNERSHIP?', type: 'options', options: ['YES', 'NO'] },
+  { id: 'q20', text: 'IS THERE CHANCE OF GETTING 100', type: 'options', options: ['YES', 'NO'] },
+  { id: 'q21', text: 'FIRST INNINGS SCORE ?', type: 'options', options: ['0-200', '200-250', '250+'] },
+  { id: 'q14', text: 'MOST WICKETS FOR', type: 'options', options: ['PACERS', 'SPINNERS'] },
 ];
 
 router.post('/generate', authMiddleware, async (req, res) => {
