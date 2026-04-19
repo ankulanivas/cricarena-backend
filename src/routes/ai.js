@@ -8,9 +8,9 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 const DEFAULT_MCQ_QUESTIONS = (teamA, teamB) => [
   { id: 'q1', text: 'WHO WILL WIN THE MATCH?', type: 'options', options: [teamA || 'TEAM A', teamB || 'TEAM B'] },
   { id: 'q2', text: 'WHO WILL WIN THE TOSS?', type: 'options', options: [teamA || 'TEAM A', teamB || 'TEAM B'] },
-  { id: 'q3', text: 'WHO WILL BE THE PLAYER OF THE MATCH?', type: 'options', options: ['Player 1', 'Player 2', 'Player 3', 'Player 4'] },
-  { id: 'q4', text: 'WHO WILL BE THE TOP RUN SCORER?', type: 'options', options: ['Player A', 'Player B', 'Player C', 'Player D'] },
-  { id: 'q5', text: 'WHO WILL TAKE THE MOST WICKETS?', type: 'options', options: ['Bowler A', 'Bowler B', 'Bowler C', 'Bowler D'] },
+  { id: 'q3', text: 'WHO WILL BE THE PLAYER OF THE MATCH?', type: 'options', options: [] },
+  { id: 'q4', text: 'WHO WILL BE THE TOP RUN SCORER?', type: 'options', options: [] },
+  { id: 'q5', text: 'WHO WILL TAKE THE MOST WICKETS?', type: 'options', options: [] },
   { id: 'q6', text: 'HOW MANY SIXES WILL BE HIT IN THE MATCH?', type: 'options', options: ['0-5', '6-10', '11-15', '16+'] },
   { id: 'q7', text: 'MOST SIXES IN THE MATCH?', type: 'options', options: [teamA || 'TEAM A', teamB || 'TEAM B', 'DRAW'] },
   { id: 'q8', text: 'TOTAL RUNS SCORED BY BOTH TEAMS?', type: 'options', options: ['0-300', '301-350', '351-400', '401+'] },
@@ -25,7 +25,7 @@ const DEFAULT_MCQ_QUESTIONS = (teamA, teamB) => [
   { id: 'q17', text: 'TOSS WINNER CHOOSE TO', type: 'options', options: ['BAT', 'BOWL'] },
   { id: 'q18', text: 'HOW MANY DUCKS TODAY?', type: 'options', options: ['0-2', '2-4', '4+'] },
   { id: 'q19', text: '100 PATNERSHIP?', type: 'options', options: ['YES', 'NO'] },
-  { id: 'q20', text: 'POWERPLAY SCORE IN THE MATCH', type: 'options', options: ['0-100', '100-150','150+'] },
+  { id: 'q20', text: 'POWERPLAY SCORE IN THE MATCH', type: 'options', options: ['0-100', '100-150', '150+'] },
   { id: 'q21', text: 'FIRST INNINGS SCORE ?', type: 'options', options: ['0-200', '200-250', '250+'] },
 ];;
 
@@ -47,20 +47,14 @@ router.post('/generate', authMiddleware, async (req, res) => {
       3. REQUIRED QUESTIONS to include:
          - Match Winner (exactly use abbreviations: ["${teamA}", "${teamB}"])
          - Toss Winner (exactly use abbreviations: ["${teamA}", "${teamB}"])
-         - Top Run Scorer (4-6 player names as options)
-         - Leading Wicket Taker (4-6 player names as options)
+         - Player of the Match (exactly use this label)
+         - Top Run Scorer (exactly use this label)
+         - Top Wicket Taker (exactly use this label)
          - Total Sixes (ranges as options, e.g., ["0-5", "6-10", "11-15", "16+"])
       
-      CRITICAL: Always use team abbreviations (${teamA}, ${teamB}) in question text and options instead of full names.
-      
-      Format as JSON array:
-      [
-        {
-          "text": "QUESTION IN UPPERCASE",
-          "type": "options",
-          "options": ["Option 1", "Option 2", ...]
-        }
-      ]
+      CRITICAL: For player-related questions (PLAYER OF THE MATCH, TOP RUN SCORER, TOP WICKET TAKER / MOST WICKETS):
+      - DO NOT generate placeholder options like "Player 1", "Player 2", "Bowler A", etc.
+      - Return an EMPTY options array: "options": []
       
       Return ONLY the raw JSON array.
     `;
@@ -99,17 +93,39 @@ router.post('/generate', authMiddleware, async (req, res) => {
         questions.push({ text: "WHO WILL WIN THE TOSS?", type: "options", options: [teamA, teamB] });
       }
 
+      const isPlayerQuestion = (label) => {
+        const l = label.toLowerCase().trim();
+        return (
+          l === "player of the match" ||
+          l === "who will be the player of the match?" ||
+          l === "who will be the top run scorer?" ||
+          l === "top run scorer" ||
+          l === "who will take the most wickets?" ||
+          l === "most wickets"
+        );
+      };
+
       // Fix Empty Options & Formatting
       questions = questions.map((q) => {
         const text = q.text.toUpperCase();
         let options = q.options;
-        if (!options || options.length === 0) {
+
+        if (isPlayerQuestion(text)) {
+          options = []; // Force empty for player questions
+        } else if (!options || options.length === 0) {
           if (text.includes("WIN") || text.includes("TOSS")) {
             options = [teamA, teamB];
           } else {
             options = ["Option A", "Option B", "Option C", "Option D"];
           }
+        } else {
+          // Extra cleanup for generated options
+          options = options.filter(opt => {
+            const o = opt.toLowerCase();
+            return !o.includes("player") && !o.includes("bowler");
+          });
         }
+
         return { ...q, text, options };
       });
 
