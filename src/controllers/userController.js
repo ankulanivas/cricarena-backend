@@ -31,6 +31,10 @@ const getUserProfile = async (req, res) => {
         total_predictions: user.total_predictions || 0,
         achievements: user.achievements || [],
         best_score: user.best_score || '0/0',
+        currentStreak: user.currentStreak || 0,
+        bestStreak: user.bestStreak || 0,
+        lastChallengeResult: user.lastChallengeResult || null,
+        streakUpdatedAt: user.streakUpdatedAt || null,
         recent_predictions: recentPredictions,
       }
     });

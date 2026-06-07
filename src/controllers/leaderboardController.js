@@ -54,15 +54,26 @@ const getLeaderboard = async (req, res) => {
 
       })
       .sort((a, b) => {
-        if (b.score !== a.score) {
-          return b.score - a.score;
+        if (challenge.results_entered) {
+          if (b.score !== a.score) {
+            return b.score - a.score;
+          }
+          // Tie-breaker: alphabetical username (A-Z)
+          const nameA = (a.username || '').toLowerCase();
+          const nameB = (b.username || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        } else {
+          // Before results: Sort by submission time (latest first) or just don't sort
+          // We'll use submitted_at to avoid alphabetical "rankings"
+          const timeA = new Date(a.submitted_at || 0).getTime();
+          const timeB = new Date(b.submitted_at || 0).getTime();
+          return timeB - timeA;
         }
-        // Tie-breaker: alphabetical username (A-Z)
-        const nameA = (a.username || '').toLowerCase();
-        const nameB = (b.username || '').toLowerCase();
-        return nameA.localeCompare(nameB);
       })
-      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+      .map((entry, idx) => ({ 
+        ...entry, 
+        rank: challenge.results_entered ? idx + 1 : 0 
+      }));
 
     return res.status(200).json({ leaderboard });
   } catch (error) {

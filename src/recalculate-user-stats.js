@@ -39,6 +39,11 @@ async function recalculateAllStats() {
       let best_winning_streak = 0;
       let best_score = '0/0';
       let best_score_value = 0;
+      
+      let currentStreak = 0;
+      let bestStreak = 0;
+      let lastChallengeResult = null;
+      let lastStreakUpdate = null;
 
       for (const challenge of sortedCompleted) {
         // Fetch prediction for this user
@@ -91,6 +96,20 @@ async function recalculateAllStats() {
           if (isTop3) {
             top_3_finishes++;
           }
+
+          // New Streak System logic
+          const meetsThreshold = qCount > 0 ? (score / qCount) >= 0.7 : false;
+          const streakWin = isTop3 || meetsThreshold;
+
+          if (streakWin) {
+            currentStreak++;
+            bestStreak = Math.max(bestStreak, currentStreak);
+            lastChallengeResult = "win";
+          } else {
+            currentStreak = 0;
+            lastChallengeResult = "loss";
+          }
+          lastStreakUpdate = challenge.created_at || new Date().toISOString();
         }
       }
 
@@ -116,7 +135,11 @@ async function recalculateAllStats() {
         total_correct,
         accuracy: isNaN(accuracy) ? 0 : accuracy,
         best_score,
-        best_score_value
+        best_score_value,
+        currentStreak,
+        bestStreak,
+        lastChallengeResult,
+        streakUpdatedAt: lastStreakUpdate ? new Date(lastStreakUpdate) : null
       });
     }
 

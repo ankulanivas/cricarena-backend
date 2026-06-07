@@ -1,31 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
+const { getMatches, getMatchById, createMatch, updateMatchStatus, searchMatches } = require('../controllers/matchController');
 
-const API_KEY = process.env.CRIC_API_KEY;
-const BASE_URL = "https://api.cricapi.com/v1";
+// Test route for connectivity
+router.get('/test', (req, res) => {
+  res.json({ success: true, message: "Backend is reachable!" });
+});
 
-const formatToIST = (utcDate) => {
-  const date = new Date(utcDate);
-  return date.toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-};
+// Search matches via CricAPI
+router.get('/search', searchMatches);
 
-// router.get('/upcoming', async (req, res) => {
-//   ...
-// });
-
-// Mocking other routes for now to keep it stable
-router.get('/', (req, res) => res.json([]));
-router.get('/:id', (req, res) => res.json({}));
-router.post('/', authMiddleware, (req, res) => res.json({}));
-router.put('/:id/status', authMiddleware, (req, res) => res.json({}));
+// Standard matches routes
+router.get('/', getMatches);
+router.get('/:id', getMatchById);
+router.post('/', authMiddleware, createMatch);
+router.put('/:id/status', authMiddleware, updateMatchStatus);
 
 module.exports = router;

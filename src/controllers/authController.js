@@ -20,6 +20,10 @@ const verifyAndUpsertUser = async (req, res) => {
         wins: 0,
         predictions_played: 0,
         accuracy: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        lastChallengeResult: null,
+        streakUpdatedAt: null,
         created_at: new Date().toISOString(),
       });
     } else {

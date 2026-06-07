@@ -1,6 +1,5 @@
 const { admin, db } = require('../../config/firebase');
 const { v4: uuidv4 } = require('uuid');
-const { getMatchResult } = require('../services/sportsMonksService');
 const { evaluatePredictions } = require('../services/scoringService');
 
 const DEFAULT_QUESTIONS = [
@@ -12,7 +11,7 @@ const DEFAULT_QUESTIONS = [
 ];
 
 const createChallenge = async (req, res) => {
-  const { match, title, stakes, custom_questions, sportsMonksFixtureId } = req.body;
+  const { match, title, stakes, custom_questions } = req.body;
   const creator_id = req.user.uid;
 
   if (!match || !title) {
@@ -52,7 +51,6 @@ const createChallenge = async (req, res) => {
       status: 'open',
       results_entered: false,
       correct_answers: {},
-      sportsMonksFixtureId: sportsMonksFixtureId || null,
       created_at: new Date().toISOString(),
     };
 
@@ -195,49 +193,6 @@ const enterResults = async (req, res) => {
   }
 };
 
-/**
- * Automatically check and process results for a challenge using SportsMonks
- */
-const checkAutomatedResults = async (req, res) => {
-    // Feature disabled: Automatic result evaluation via SportsMonks
-    return res.status(200).json({ message: "Auto evaluation disabled" });
-
-    const challenge_id = req.params.id;
-
-    try {
-        const challengeRef = db.collection('challenges').doc(challenge_id);
-        const doc = await challengeRef.get();
-        if (!doc.exists) return res.status(404).json({ error: 'Challenge not found' });
-
-        const challenge = doc.data();
-        if (challenge.results_entered) return res.status(400).json({ error: 'Results already processed' });
-        if (!challenge.sportsMonksFixtureId) return res.status(400).json({ error: 'No SportsMonks Fixture ID linked' });
-
-        const matchResult = await getMatchResult(challenge.sportsMonksFixtureId);
-        if (!matchResult) return res.status(200).json({ status: 'Match not finished or API error' });
-
-        // Map SportsMonks to Challenge Questions
-        const correct_answers = {};
-        const questions = challenge.questions || [];
-
-        questions.forEach(q => {
-            const label = q.label?.toLowerCase() || '';
-            if (label.includes('match winner')) correct_answers[q.id] = matchResult.winnerTeamId;
-            else if (label.includes('toss winner')) correct_answers[q.id] = matchResult.tossWinnerTeamId;
-            else if (label.includes('player of the match')) correct_answers[q.id] = matchResult.manOfMatch || matchResult.manofmatch;
-        });
-
-        if (Object.keys(correct_answers).length === 0) {
-            return res.status(400).json({ error: 'No matching questions found for automation' });
-        }
-
-        await evaluatePredictions(challenge_id, correct_answers);
-        return res.status(200).json({ success: true, results: matchResult });
-    } catch (error) {
-        console.error('Automation Error:', error);
-        return res.status(500).json({ error: 'Automation failed' });
-    }
-};
 
 // GET /api/challenges/user/:userId
 const getUserChallenges = async (req, res) => {
@@ -307,6 +262,5 @@ module.exports = {
   joinChallenge, 
   enterResults, 
   getUserChallenges, 
-  checkAutomatedResults,
   createChallengeFromTemplate 
 };

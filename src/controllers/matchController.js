@@ -73,4 +73,25 @@ const updateMatchStatus = async (req, res) => {
   }
 };
 
-module.exports = { getMatches, getMatchById, createMatch, updateMatchStatus };
+const { searchUpcomingMatches } = require('../services/cricApiService');
+
+// GET /api/matches/search
+const searchMatches = async (req, res) => {
+  const { teamA, teamB } = req.query;
+  console.log("searchMatches called");
+  console.log("teamA:", teamA, "teamB:", teamB);
+  
+  if (!teamA || !teamB) {
+    return res.status(400).json({ error: 'teamA and teamB are required' });
+  }
+
+  try {
+    const matches = await searchUpcomingMatches(teamA, teamB);
+    return res.status(200).json(matches);
+  } catch (error) {
+    console.error('Error searching matches:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = { getMatches, getMatchById, createMatch, updateMatchStatus, searchMatches };

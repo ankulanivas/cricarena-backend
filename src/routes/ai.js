@@ -1,9 +1,9 @@
+console.log('[AI] Loading AI Routes module...');
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const { generateContent, generateMatchResults } = require('../services/geminiService');
+const { db } = require('../../config/firebase');
 
 const DEFAULT_MCQ_QUESTIONS = (teamA, teamB) => [
   { id: 'q1', text: 'WHO WILL WIN THE MATCH?', type: 'options', options: [teamA || 'TEAM A', teamB || 'TEAM B'] },
@@ -30,9 +30,10 @@ const DEFAULT_MCQ_QUESTIONS = (teamA, teamB) => [
 ];;
 
 router.post('/generate', authMiddleware, async (req, res) => {
+  console.log('[AI] POST /generate route hit');
   const { teamA, teamB, format, arenaTier } = req.body;
 
-  if (!GEMINI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     console.warn('[AI] Missing GEMINI_API_KEY, returning default questions.');
     return res.json({ questions: DEFAULT_MCQ_QUESTIONS(teamA, teamB) });
   }
@@ -59,19 +60,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
       Return ONLY the raw JSON array.
     `;
 
-    const response = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    let questionsText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    questionsText = questionsText.replace(/```json|```/g, '').trim();
+    const questionsText = await generateContent(prompt);
 
     try {
       let rawQuestions = JSON.parse(questionsText);
@@ -97,49 +86,29 @@ router.post('/generate', authMiddleware, async (req, res) => {
         const l = label.toLowerCase().trim();
         return (
           l === "player of the match" ||
-          l === "who will be the player of the match?" ||
-          l === "who will be the top run scorer?" ||
           l === "top run scorer" ||
-          l === "who will take the most wickets?" ||
+          l === "top wicket taker" ||
           l === "most wickets"
         );
       };
 
-      // Fix Empty Options & Formatting
       questions = questions.map((q) => {
         const text = q.text.toUpperCase();
         let options = q.options;
 
         if (isPlayerQuestion(text)) {
-          options = []; // Force empty for player questions
+          options = [];
         } else if (!options || options.length === 0) {
           if (text.includes("WIN") || text.includes("TOSS")) {
             options = [teamA, teamB];
           } else {
             options = ["Option A", "Option B", "Option C", "Option D"];
           }
-        } else {
-          // Extra cleanup for generated options
-          options = options.filter(opt => {
-            const o = opt.toLowerCase();
-            return !o.includes("player") && !o.includes("bowler");
-          });
         }
 
         return { ...q, text, options };
       });
 
-      // Remove Duplicates
-      questions = questions.filter((q, index, self) =>
-        index === self.findIndex(item => item.text === q.text)
-      );
-
-      // Adjust Count (8-10)
-      if (questions.length > 10) {
-        questions = questions.slice(0, 10);
-      }
-
-      // Add final IDs
       const finalQuestions = questions.map((q, idx) => ({
         ...q,
         id: `ai-${Date.now()}-${idx}`

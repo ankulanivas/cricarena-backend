@@ -124,17 +124,36 @@ const updateUserStats = async (uid, score, total, rank) => {
         const u = userDoc.data();
         const isWin = rank === 1;
         const isTop3 = rank <= 3;
+        const meetsThreshold = total > 0 ? (score / total) >= 0.7 : false;
+        const streakWin = isTop3 || meetsThreshold;
 
-        const total_predictions = (u.total_predictions || 0) + total;
-        const total_correct_questions = (u.total_correct_questions || 0) + (score > total ? total : score); // Cap for legacy accuracy
-        
+        let currentStreak = u.currentStreak || 0;
+        let bestStreak = u.bestStreak || 0;
+        let lastChallengeResult = "loss";
+
+        if (streakWin) {
+            currentStreak += 1;
+            bestStreak = Math.max(bestStreak, currentStreak);
+            lastChallengeResult = "win";
+        } else {
+            currentStreak = 0;
+            lastChallengeResult = "loss";
+        }
+        const streakUpdatedAt = admin.firestore.Timestamp.now();
+
         await userRef.update({
             wins: admin.firestore.FieldValue.increment(isWin ? 1 : 0),
             top_3_finishes: admin.firestore.FieldValue.increment(isTop3 ? 1 : 0),
             current_winning_streak: isWin ? admin.firestore.FieldValue.increment(1) : 0,
             challenges_won: admin.firestore.FieldValue.increment(isWin ? 1 : 0),
             // Compatibility updates
-            total_correct: admin.firestore.FieldValue.increment(score)
+            total_correct: admin.firestore.FieldValue.increment(score),
+            
+            // New Streak System
+            currentStreak,
+            bestStreak,
+            lastChallengeResult,
+            streakUpdatedAt
         });
     } catch (err) {
         console.error(`[Scoring] Error updating stats for user ${uid}:`, err);
@@ -142,5 +161,6 @@ const updateUserStats = async (uid, score, total, rank) => {
 };
 
 module.exports = {
-    evaluatePredictions
+    evaluatePredictions,
+    updateUserStats
 };

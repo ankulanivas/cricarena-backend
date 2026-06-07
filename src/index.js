@@ -9,7 +9,6 @@ const predictionRoutes = require('./routes/predictions');
 const leaderboardRoutes = require('./routes/leaderboard');
 const userRoutes = require('./routes/users');
 const aiRoutes = require('./routes/ai');
-const { runAutoEvaluation } = require('./jobs/autoEvaluateJob');
 
 console.log('[SYSTEM] Registering API Routes...');
 
