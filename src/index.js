@@ -8,7 +8,6 @@ const challengeRoutes = require('./routes/challenges');
 const predictionRoutes = require('./routes/predictions');
 const leaderboardRoutes = require('./routes/leaderboard');
 const userRoutes = require('./routes/users');
-const aiRoutes = require('./routes/ai');
 
 console.log('[SYSTEM] Registering API Routes...');
 
@@ -51,9 +50,8 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/ai', aiRoutes);
 
-console.log('[SYSTEM] API Routes Registered Successfully');
+console.log('[SYSTEM] Registering API Routes Registered Successfully');
 
 
 // 404 handler
